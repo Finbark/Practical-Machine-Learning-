@@ -1,0 +1,75 @@
+---
+title: "Practical Machine Learning Assignment"
+author: "finbark"
+date: "30 September 2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+```
+
+# Overview
+This report outlines predictions for the manner in which six participants performed a particular type of exercise as based on data from a fitness tracker. 20 differnet test cases are predicted using the prediction model.
+
+# Getting the data
+
+```{r get}
+set.seed(12345)
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+predictionUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+```
+
+# Load and tidy data
+Load the data and standardise how the data represents NA values.
+```{r load}
+trainingData <- read.csv(url(trainUrl), na.strings = c("NA", "#DIV/0!", ""))
+predictionData <- read.csv(url(predictionUrl), na.strings = c("NA", "#DIV/0!", ""))
+```
+
+Remove variables one to six as they are not relevant.
+```{r remove}
+trainingData <- trainingData[, -(1:6)]
+predictionData <- predictionData[, -(1:6)]
+```
+
+Remove variables that are more than 70% NAs.
+```{r tidy}
+NAs <- sapply(trainingData, function(x) mean(is.na(x))) > 0.7
+trainingData <- trainingData[, NAs == FALSE]
+predictionData <- predictionData[, NAs == FALSE]
+```
+
+Partition into training and testing sets.
+```{r partition}
+inTraining <- createDataPartition(trainingData$classe, p = 0.6, list = FALSE)
+trainingSet <- trainingData[inTraining, ]
+testSet <- trainingData[-inTraining, ]
+```
+
+# Predicting with random forests
+
+We shall first try to predict with random forests as they are know to be quite effective. 
+```{r randomForest}
+modelFit <- randomForest(classe ~ ., data = trainingSet)
+prediction <- predict(modelFit, testSet, type = "class")
+matrix <- confusionMatrix(prediction, testSet$classe)
+matrix
+plot(modelFit)
+```
+
+The above matrix and plot show that the random forest does a good job at predicting the classe variable as it has a high accuracy score of 0.9975. 
+
+# Predicting class on test data
+``` {r predictTest}
+prediction <- predict(modelFit, predictionData, type = "class")
+prediction
+```
